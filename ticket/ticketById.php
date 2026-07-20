@@ -3,46 +3,21 @@ header('Content-Type: application/json');
 
 include "../db.php";
 include "../auth/checkRole.php";
+include "./accesTicket.php";
 
 verifierRole(['client', 'agent', 'admin']);
 
-$id = $_POST['id'];
+$id = $_POST['id'] ?? '';
 
-if ($_SESSION['role'] == 'client') {
-
-    $stmt = $db->prepare("
-        SELECT *
-        FROM ticket
-        WHERE id = ? AND id_createur = ?
-    ");
-
-    $stmt->execute([$id, $_SESSION['id']]);
-
-} elseif ($_SESSION['role'] == 'agent') {
-
-    $stmt = $db->prepare("
-        SELECT *
-        FROM ticket
-        WHERE id = ? AND id_assigne = ?
-    ");
-
-    $stmt->execute([$id, $_SESSION['id']]);
-
-} else {
-
-    // Admin
-    $stmt = $db->prepare("
-        SELECT *
-        FROM ticket
-        WHERE id = ?
-    ");
-
-    $stmt->execute([$id]);
+if (!$id) {
+    echo json_encode([
+        "success" => false,
+        "message" => "id est requis."
+    ]);
+    exit;
 }
 
-$ticket = $stmt->fetch(PDO::FETCH_ASSOC);
-
-if (!$ticket) {
+if (!chargerTicketAutorise($db, $id)) {
     echo json_encode([
         "success" => false,
         "message" => "Ticket introuvable ou accès non autorisé."
@@ -50,7 +25,18 @@ if (!$ticket) {
     exit;
 }
 
+$stmt = $db->prepare("
+    SELECT t.*,
+           uc.nom AS nom_createur, uc.prenom AS prenom_createur,
+           ua.nom AS nom_assigne,  ua.prenom AS prenom_assigne
+    FROM ticket t
+    LEFT JOIN utilisateurs uc ON uc.id = t.id_createur
+    LEFT JOIN utilisateurs ua ON ua.id = t.id_assigne
+    WHERE t.id = ?
+");
+$stmt->execute([$id]);
+
 echo json_encode([
     "success" => true,
-    "ticket" => $ticket
+    "ticket"  => $stmt->fetch(PDO::FETCH_ASSOC)
 ]);

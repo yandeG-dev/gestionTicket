@@ -3,28 +3,30 @@ header('Content-Type: application/json');
 
 include "../db.php";
 include "../auth/checkRole.php";
+include "../ticket/accesTicket.php";
 
 verifierRole(['client', 'agent', 'admin']);
 
-$ticket_id = $_POST['ticket_id'];
+$ticket_id = $_POST['ticket_id'] ?? '';
 
+if (!$ticket_id) {
+    echo json_encode([
+        "success" => false,
+        "message" => "ticket_id est requis."
+    ]);
+    exit;
+}
 
-if ($_SESSION['role'] == 'client') {
-    $stmt = $db->prepare("SELECT id_createur FROM ticket WHERE id = ?");
-    $stmt->execute([$ticket_id]);
-    $ticket = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$ticket || $ticket['id_createur'] != $_SESSION['id']) {
-        echo json_encode([
-            "success" => false,
-            "message" => "Accès non autorisé à cet historique."
-        ]);
-        exit;
-    }
+if (!chargerTicketAutorise($db, $ticket_id)) {
+    echo json_encode([
+        "success" => false,
+        "message" => "Accès non autorisé à cet historique."
+    ]);
+    exit;
 }
 
 $stmt = $db->prepare("
-    SELECT h.id, h.action, h.ticket_id, h.utilisateur_id,
+    SELECT h.id, h.action, h.ticket_id, h.utilisateur_id, h.dateAction,
            u.nom AS nom_utilisateur, u.prenom AS prenom_utilisateur
     FROM historique h
     LEFT JOIN utilisateurs u ON u.id = h.utilisateur_id
@@ -36,6 +38,6 @@ $stmt->execute([$ticket_id]);
 $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 echo json_encode([
-    "success" => true,
+    "success"    => true,
     "historique" => $result
 ]);

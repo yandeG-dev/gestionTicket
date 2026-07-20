@@ -6,7 +6,15 @@ include "../auth/checkRole.php";
 
 verifierRole(['client', 'agent', 'admin']);
 
-$id = $_POST['id'];
+$id = $_POST['id'] ?? '';
+
+if (!$id) {
+    echo json_encode([
+        "success" => false,
+        "message" => "id est requis."
+    ]);
+    exit;
+}
 
 $stmt = $db->prepare("SELECT utilisateur_id FROM commentaire WHERE id = ?");
 $stmt->execute([$id]);

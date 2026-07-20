@@ -6,8 +6,8 @@ include "../auth/checkRole.php";
 
 verifierRole(['client', 'agent', 'admin']);
 
-$id               = $_POST['id'];
-$texteCommentaire = $_POST['texteCommentaire'];
+$id               = $_POST['id'] ?? '';
+$texteCommentaire = $_POST['texteCommentaire'] ?? '';
 
 if (!$id || !$texteCommentaire) {
     echo json_encode([
